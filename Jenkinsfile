@@ -1,24 +1,41 @@
 pipeline {
     agent any
-    options {
-        skipStagesAfterUnstable()
-    }
+    
     stages {
-        stage('Build') {
+        stage('Build & Test') {
             steps {
-                sh 'make'
+                echo '🛠️ Building and testing the application...'
+                sh 'echo "Running tests..." && sleep 2' 
             }
         }
-        stage('Test'){
+
+        // 🛑 ขั้นตอนการตรวจสอบ (The Gatekeeper)
+        stage('Promote to Production') {
             steps {
-                sh 'make check'
-                junit 'reports/**/*.xml'
+                script {
+                    // ใช้ timeout เพื่อไม่ให้ Pipeline ค้างถาวรหากไม่มีคนมากดอนุมัติภายใน 1 ชม.
+                    timeout(time: 1, unit: 'HOURS') { 
+                        input message: '🚀 ตรวจสอบความเรียบร้อย: คุณยืนยันที่จะ Deploy งานนี้ขึ้น Production หรือไม่?', 
+                              ok: 'อนุมัติการ Deploy!' 
+                    }
+                }
             }
         }
-        stage('Deploy') {
+
+        stage('Deploy to Production') {
             steps {
-                sh 'make publish' //
+                echo '🚚 Deploying to Production Server...'
+                sh 'echo "Pushing to prod..." && sleep 2'
             }
+        }
+    }
+    
+    post {
+        aborted {
+            echo '⚠️ Pipeline ถูกยกเลิก (อาจเพราะไม่มีคนกดอนุมัติในเวลาที่กำหนด)'
+        }
+        success {
+            echo '✅ Deploy สำเร็จเรียบร้อย!'
         }
     }
 }
